@@ -9,6 +9,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.colors import TwoSlopeNorm
 
 
 def plot_results(psi, omega, Re,
@@ -47,24 +48,40 @@ def plot_results(psi, omega, Re,
     fig.suptitle(f"Flujo en canal con obstáculos  —  Re = {Re:.2f}",
                  fontsize=14, fontweight='bold')
 
+    # Fix descuadre: extent de -0.5 a N+0.5 centra cada píxel en su nodo entero,
+    # así los rectángulos (desde ic-0.5, jb-0.5) tapan justo las celdas sólidas.
+    ext = [-0.5, Nx + 0.5, -0.5, Ny + 0.5]
+
+    # Fix vorticidad: recorta la escala al percentil 98 de |ω| para que la esquina
+    # singular no aplaste el resto del campo hacia el blanco.
+    om_fluid = omega[fluid_mask]
+    om_lim = np.percentile(np.abs(om_fluid), 98) if om_fluid.size else 1.0
+    if om_lim <= 0:
+        om_lim = 1.0
+    # TwoSlopeNorm ancla el blanco en ω=0 y hace la escala simétrica ±om_lim.
+    om_norm = TwoSlopeNorm(vmin=-om_lim, vcenter=0.0, vmax=om_lim)
+
     configs = [
-        (psi,   "Función de corriente  ψ", "RdBu_r",  True),
-        (omega, "Vorticidad  ω",            "seismic", False),
+        (psi,   "Función de corriente  ψ", "RdBu_r",  True,  None),
+        (omega, "Vorticidad  ω",           "seismic", False, om_norm),
     ]
 
-    for ax, (field, title, cmap, do_contour) in zip(axes[:2], configs):
+    for ax, (field, title, cmap, do_contour, norm) in zip(axes[:2], configs):
         fld = np.ma.array(field.T, mask=~fluid_mask.T)
         im  = ax.imshow(fld, origin="lower", aspect="auto",
-                        cmap=cmap, extent=[0, Nx, 0, Ny])
-        plt.colorbar(im, ax=ax, fraction=0.015, pad=0.02)
+                        cmap=cmap, norm=norm, extent=ext)
+        cbar = plt.colorbar(im, ax=ax, fraction=0.015, pad=0.02,
+                            extend="both" if norm is not None else "neither")
+        if norm is not None:
+            cbar.set_label("ω  (recortada a ±p98)", fontsize=8)
 
-        # Bloques sólidos
+        # Bloques sólidos (esquina en ic-0.5, jb-0.5 para alinear con la máscara)
         for (ic, fc, jb, jt, lbl) in [
             (B1_ic, B1_fc, B1_jb, B1_jt, "Bloque 1"),
             (B2_ic, B2_fc, B2_jb, B2_jt, "Bloque 2"),
         ]:
             ax.add_patch(mpatches.Rectangle(
-                (ic, jb), fc - ic + 1, jt - jb + 1,
+                (ic - 0.5, jb - 0.5), fc - ic + 1, jt - jb + 1,
                 lw=1.5, edgecolor="k", facecolor="dimgray", label=lbl))
 
         # Contornos de streamlines
@@ -77,6 +94,8 @@ def plot_results(psi, omega, Re,
             except Exception:
                 pass
 
+        ax.set_xlim(ext[0], ext[1])
+        ax.set_ylim(ext[2], ext[3])
         ax.set_title(title, fontsize=11)
         ax.set_xlabel("x  (columnas)")
         ax.set_ylabel("y  (filas)")
@@ -99,11 +118,11 @@ def plot_results(psi, omega, Re,
         (B2_ic, B2_fc, B2_jb, B2_jt, "Bloque 2"),
     ]:
         ax.add_patch(mpatches.Rectangle(
-            (ic, jb), fc - ic + 1, jt - jb + 1,
+            (ic - 0.5, jb - 0.5), fc - ic + 1, jt - jb + 1,
             lw=1.5, edgecolor="k", facecolor="dimgray", label=lbl))
 
-    ax.set_xlim(0, Nx)
-    ax.set_ylim(0, Ny)
+    ax.set_xlim(-0.5, Nx + 0.5)
+    ax.set_ylim(-0.5, Ny + 0.5)
     ax.set_title("Campo de velocidades  (ux, uy)", fontsize=11)
     ax.set_xlabel("x  (columnas)")
     ax.set_ylabel("y  (filas)")
