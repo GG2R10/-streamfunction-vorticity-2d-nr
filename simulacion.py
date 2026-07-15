@@ -164,14 +164,20 @@ def compute_F(psi, omega, R):
                     F[rw] = omega[i,j] + (2.0/h**2) * thom_sum / len(contribs)
                 else:
                     F[rw] = omega[i,j]
-            else:  # FREE: transporte de vorticidad
-                dpsi_y = psi[i, j+1] - psi[i, j-1]
-                dpsi_x = psi[i+1, j] - psi[i-1, j]
-                dom_x  = omega[i+1, j] - omega[i-1, j]
-                dom_y  = omega[i, j+1] - omega[i, j-1]
+            else:  # FREE: transporte de vorticidad (convección con UPWIND)
+                # Velocidades: u_x = ∂ψ/∂y,  u_y = -∂ψ/∂x
+                u_x =  (psi[i, j+1] - psi[i, j-1]) / (2.0*h)
+                u_y = -(psi[i+1, j] - psi[i-1, j]) / (2.0*h)
+                # Derivadas de ω "río arriba" según el signo de la velocidad:
+                # así el coeficiente del vecino nunca cambia de signo (M-matriz)
+                # y no aparecen las oscilaciones de las diferencias centradas.
+                dwdx = ((omega[i, j] - omega[i-1, j]) if u_x >= 0.0
+                        else (omega[i+1, j] - omega[i, j])) / h
+                dwdy = ((omega[i, j] - omega[i, j-1]) if u_y >= 0.0
+                        else (omega[i, j+1] - omega[i, j])) / h
+                conv = R * h**2 * (u_x*dwdx + u_y*dwdy)
                 F[rw] = (omega[i+1,j] + omega[i-1,j] + omega[i,j+1] + omega[i,j-1]
-                         - 4.0*omega[i,j]
-                         - (R/4.0)*(dpsi_y*dom_x - dpsi_x*dom_y))
+                         - 4.0*omega[i,j] - conv)
     return F
 
 def compute_J(psi, omega, R):
@@ -218,30 +224,49 @@ def compute_J(psi, omega, R):
                             J[rw, node_id[ii,ij]] += coeff
                 continue
 
-            # FREE: dF^ω — transporte de vorticidad
-            dpsi_y = psi[i, j+1] - psi[i, j-1]
-            dpsi_x = psi[i+1, j] - psi[i-1, j]
-            dom_x  = omega[i+1, j] - omega[i-1, j]
-            dom_y  = omega[i, j+1] - omega[i, j-1]
+            # FREE: dF^ω — transporte de vorticidad (Jacobiana del esquema UPWIND)
+            u_x =  (psi[i, j+1] - psi[i, j-1]) / (2.0*h)
+            u_y = -(psi[i+1, j] - psi[i-1, j]) / (2.0*h)
+            # Selección de nodos "río arriba" (los mismos que usa compute_F).
+            # (xp, xm): pareja (+, -) que forma dwdx = (ω[xp] - ω[xm]) / h
+            if u_x >= 0.0:
+                dwdx = (omega[i, j] - omega[i-1, j]) / h
+                xp, xm = (i, j), (i-1, j)
+            else:
+                dwdx = (omega[i+1, j] - omega[i, j]) / h
+                xp, xm = (i+1, j), (i, j)
+            if u_y >= 0.0:
+                dwdy = (omega[i, j] - omega[i, j-1]) / h
+                yp, ym = (i, j), (i, j-1)
+            else:
+                dwdy = (omega[i, j+1] - omega[i, j]) / h
+                yp, ym = (i, j+1), (i, j)
 
-            J[rw, rw] = -4.0
-            for (ni,nj), val in {
-                (i+1,j): 1.0 - (R/4.0)*dpsi_y,
-                (i-1,j): 1.0 + (R/4.0)*dpsi_y,
-                (i,j+1): 1.0 + (R/4.0)*dpsi_x,
-                (i,j-1): 1.0 - (R/4.0)*dpsi_x,
+            cx = R * h**2 * u_x
+            cy = R * h**2 * u_y
+
+            # dF^ω/dω = Laplaciano  −  ∂conv/∂ω
+            J[rw, rw] += -4.0
+            for ni, nj in [(i+1,j),(i-1,j),(i,j+1),(i,j-1)]:
+                if is_active(ni, nj):
+                    J[rw, node_id[ni,nj] + N_act] += 1.0
+            # ∂conv/∂ω:  conv = cx·dwdx + cy·dwdy,  dwdx=(ω[xp]-ω[xm])/h
+            for (ni, nj), sgn in [(xp, +1.0), (xm, -1.0)]:
+                if is_active(ni, nj):
+                    J[rw, node_id[ni,nj] + N_act] += -(cx/h)*sgn
+            for (ni, nj), sgn in [(yp, +1.0), (ym, -1.0)]:
+                if is_active(ni, nj):
+                    J[rw, node_id[ni,nj] + N_act] += -(cy/h)*sgn
+
+            # dF^ω/dψ = − ∂conv/∂ψ  (conv depende de ψ vía u_x, u_y)
+            for (ni,nj), dconv in {
+                (i, j+1): +R*h*dwdx/2.0,
+                (i, j-1): -R*h*dwdx/2.0,
+                (i+1, j): -R*h*dwdy/2.0,
+                (i-1, j): +R*h*dwdy/2.0,
             }.items():
                 if is_active(ni, nj):
-                    J[rw, node_id[ni,nj] + N_act] += val
-
-            for (ni,nj), val in {
-                (i,j+1): -(R/4.0)*dom_x,
-                (i,j-1): +(R/4.0)*dom_x,
-                (i+1,j): +(R/4.0)*dom_y,
-                (i-1,j): -(R/4.0)*dom_y,
-            }.items():
-                if is_active(ni, nj):
-                    J[rw, node_id[ni,nj]] += val
+                    J[rw, node_id[ni,nj]] += -dconv
 
     return csr_matrix(J)
 

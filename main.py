@@ -13,7 +13,7 @@ from simulacion import (re_continuation,
 from visualizacion import plot_results
 
 # ── Parámetro principal ───────────────────────────────────────────────────────
-Re_objetivo = 10   # ← cambia aquí para explorar otros Reynolds
+Re_objetivo = 20   # ← cambia aquí para explorar otros Reynolds
 
 # ── Resolver ─────────────────────────────────────────────────────────────────
 psi_sol, omega_sol = re_continuation(Re_objetivo)
