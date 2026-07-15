@@ -2,7 +2,7 @@
 
 Solución numérica de Navier–Stokes 2D incompresible en formulación ψ–ω, usando diferencias finitas, Newton–Raphson con *line search* y continuación en Reynolds.
 
-![Ejemplo de resultados](flujo_Re1.png)
+![Ejemplo de resultados](flujo_Re2.png)
 
 ## ⚙️ El problema
 
