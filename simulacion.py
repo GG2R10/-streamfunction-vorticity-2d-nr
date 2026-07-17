@@ -2,17 +2,24 @@ import numpy as np
 from scipy.sparse import lil_matrix, csr_matrix
 from scipy.sparse.linalg import spsolve
 
-# Parámetros
-Nx, Ny = 200, 20
-h, V0 = 1.0, 1.0
+# Malla fina (original) y factor de reducción.
+# El sistema se resuelve en una malla FACTOR veces más gruesa (más barata) y
+# la solución se devuelve a la malla fina con splines cúbicos naturales
+# (ver interpolacion.py). FACTOR = 1 resuelve directamente en la malla fina.
+# Usar valores que dividan a NY_F (1, 2, 4) para no deformar el canal.
+FACTOR = 2
+NX_F, NY_F = 200, 20
 
-# Bloque 1 — esquina superior izquierda
-B1_ic, B1_fc = 0,  8
-B1_jb, B1_jt = 13, 20
+Nx, Ny = NX_F // FACTOR, NY_F // FACTOR
+h, V0 = 1.0 * FACTOR, 1.0   # h crece con FACTOR: mismo dominio físico
 
-# Bloque 2 — zona inferior central
-B2_ic, B2_fc = 90, 98
-B2_jb, B2_jt = 0,  7
+# Bloques en índices de la malla fina (geometría original), (ic, fc, jb, jt)
+B1_FINO = (0, 8, 13, 20)    # Bloque 1 — esquina superior izquierda
+B2_FINO = (90, 98, 0, 7)    # Bloque 2 — zona inferior central
+
+# Índices escalados a la malla gruesa
+B1_ic, B1_fc, B1_jb, B1_jt = (round(v / FACTOR) for v in B1_FINO)
+B2_ic, B2_fc, B2_jb, B2_jt = (round(v / FACTOR) for v in B2_FINO)
 
 psi_max = V0 * Ny * h
 
