@@ -2,8 +2,6 @@
 
 Solución numérica de Navier–Stokes 2D incompresible en formulación ψ–ω, usando diferencias finitas, Newton–Raphson con *line search* y continuación en Reynolds.
 
-> **Esta rama** discretiza el término convectivo de la ecuación de vorticidad con un esquema **upwind (donor-cell)** en lugar de diferencias centradas. Esto elimina las oscilaciones que aparecían a Reynolds moderado y permite resolver Re más altos en la misma malla. Ver [🌀 Esquema upwind](#-esquema-upwind-esta-rama).
-
 ![Ejemplo de resultados](flujo_Re10.png)
 
 ## ⚙️ El problema
