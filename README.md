@@ -1,4 +1,4 @@
-# Stream-function / Vorticity 2D Solver — rama `upwind-no-centradas`
+# Stream-function / Vorticity 2D Solver
 
 Solución numérica de Navier–Stokes 2D incompresible en formulación ψ–ω, usando diferencias finitas, Newton–Raphson con *line search* y continuación en Reynolds.
 
