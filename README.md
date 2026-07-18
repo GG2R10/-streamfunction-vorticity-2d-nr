@@ -2,7 +2,10 @@
 
 Solución numérica de Navier–Stokes 2D incompresible en formulación ψ–ω, usando diferencias finitas, Newton–Raphson con *line search* y continuación en Reynolds.
 
-![Ejemplo de resultados](flujo_Re10.png)
+> parte del esquema **upwind** de `upwind-no-centradas` y añade: solución en **malla reducida** reconstruida al tamaño original con un **spline cúbico natural propio**, y una **comparación de métodos** (directo / Jacobi / Gauss-Seidel / CG) para el sistema lineal de Newton. Ver las secciones al final.
+
+![Ejemplo de resultados](flujo_Re20.png)
+*Re = 20, resuelto en la malla gruesa `100×10` y reconstruido a `200×20` con el spline cúbico natural.*
 
 ## ⚙️ El problema
 
@@ -32,6 +35,7 @@ No todos los nodos son incógnitas. La malla se divide en 6 tipos:
 1. **Newton–Raphson** con *backtracking line search* para resolver el sistema \(F(\psi,\omega)=0\).
 2. **Jacobiana sparse** (~10 \(N_{\text{act}}\) no ceros, densidad < 0.1 %) en formato CSR, resuelta con `scipy.sparse.linalg.spsolve`.
 3. **Continuación en Reynolds**: arranca desde Re ≈ 0 y sube gradualmente hasta el Re objetivo. Si un paso falla, subdivide automáticamente.
+4. **Malla reducida + spline cúbico natural**: el sistema se resuelve en una malla `FACTOR` veces más gruesa y la solución se reconstruye a `200×20` (ver [la sección dedicada](#-spline-cúbico-natural-malla-reducida)).
 
 ### Discretización del término convectivo
 
@@ -42,13 +46,13 @@ La convección de vorticidad se discretiza con **upwind de 1.er orden**; el rest
 - **Thom en paredes**: los nodos adyacentes a sólidos no resuelven la ecuación de transporte, sino una relación lineal que aproxima la derivada normal.
 - **OUTLET con Neumann**: la frontera de salida se trata como nodo activo, acoplando el nodo de salida con su vecino interior.
 
-## 🌀 Esquema upwind
+## 🌀 Esquema upwind (esta rama)
 
 ### El problema que resuelve
 
 La ecuación de transporte de vorticidad tiene un término convectivo no lineal
 \(u_x\,\partial_x\omega + u_y\,\partial_y\omega\), con \(u_x=\partial_y\psi\), \(u_y=-\partial_x\psi\).
-En anteriores versiones este término usa **diferencias centradas**. Ese esquema solo es
+En las anteriores versiones este término usa **diferencias centradas**. Ese esquema solo es
 estable si el **Reynolds de celda** es pequeño:
 
 $$\mathrm{Re}_{\text{celda}} = R\,|u|\,h < 2$$
@@ -99,7 +103,7 @@ verificada contra diferencias finitas (error ~1e-8).
 - **Deferred correction**: iterar upwind (estable) con una corrección centrada explícita para acercarse a 2.º orden manteniendo estabilidad.
 - **Refinar la malla** para bajar \(\mathrm{Re}_{\text{celda}}\) y reducir la difusión numérica.
 
-| | anteriores versiones (centrado) | `upwind-no-centradas` |
+| | antiguas versiones (centrado) | `upwind-no-centradas` |
 |---|---|---|
 | Orden de precisión (convección) | 2.º \(O(h^2)\) | 1.er \(O(h)\) |
 | Estabilidad | solo si \(\mathrm{Re}_{\text{celda}}<2\) | incondicional |
