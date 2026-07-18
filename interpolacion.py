@@ -3,22 +3,23 @@
 #  Stream-function / Vorticity 2D Solver
 #
 #  El solver resuelve en una malla gruesa (FACTOR veces menor, ver
-#  simulacion.py); aquí la solución se devuelve a la malla original
-#  interpolando con scipy.interpolate.CubicSpline (bc_type="natural",
-#  es decir S'' = 0 en los extremos).
+#  simulacion.py); aquí la solución se devuelve a la malla original con el
+#  spline cúbico natural propio del proyecto (spline_cubico.py: sistema
+#  tridiagonal para las segundas derivadas + algoritmo de Thomas, sin SciPy),
+#  aplicado en producto tensorial.
 # =============================================================================
 
 import numpy as np
-from scipy.interpolate import CubicSpline
+from spline_cubico import reconstruir_campo_2d
 
 
 def refinar_campo(campo, Nx_f, Ny_f):
     """
     Interpola un campo escalar de la malla gruesa a la fina.
 
-    Producto tensorial de splines 1D: primero a lo largo de x (todas las
-    filas a la vez con axis=0) y después a lo largo de y. En los nodos
-    coincidentes de ambas mallas el valor original se conserva exacto.
+    Producto tensorial de splines 1D: primero a lo largo de x (cada fila)
+    y después a lo largo de y (cada columna). En los nodos coincidentes de
+    ambas mallas el valor original se conserva exacto.
 
     Parámetros
     ----------
@@ -35,8 +36,7 @@ def refinar_campo(campo, Nx_f, Ny_f):
     x_c, x_f = np.linspace(0, 1, Nx_c + 1), np.linspace(0, 1, Nx_f + 1)
     y_c, y_f = np.linspace(0, 1, Ny_c + 1), np.linspace(0, 1, Ny_f + 1)
 
-    parcial = CubicSpline(x_c, campo, axis=0, bc_type="natural")(x_f)
-    return CubicSpline(y_c, parcial, axis=1, bc_type="natural")(y_f)
+    return reconstruir_campo_2d(campo, x_c, y_c, x_f, y_f)
 
 
 def kind_malla_fina(Nx_f, Ny_f, bloques, SOLID, FREE):
