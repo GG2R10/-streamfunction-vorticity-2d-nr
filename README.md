@@ -42,13 +42,13 @@ La convección de vorticidad se discretiza con **upwind de 1.er orden**; el rest
 - **Thom en paredes**: los nodos adyacentes a sólidos no resuelven la ecuación de transporte, sino una relación lineal que aproxima la derivada normal.
 - **OUTLET con Neumann**: la frontera de salida se trata como nodo activo, acoplando el nodo de salida con su vecino interior.
 
-## 🌀 Esquema upwind (esta rama)
+## 🌀 Esquema upwind
 
 ### El problema que resuelve
 
 La ecuación de transporte de vorticidad tiene un término convectivo no lineal
 \(u_x\,\partial_x\omega + u_y\,\partial_y\omega\), con \(u_x=\partial_y\psi\), \(u_y=-\partial_x\psi\).
-En la rama `main` este término usa **diferencias centradas**. Ese esquema solo es
+En anteriores versiones este término usa **diferencias centradas**. Ese esquema solo es
 estable si el **Reynolds de celda** es pequeño:
 
 $$\mathrm{Re}_{\text{celda}} = R\,|u|\,h < 2$$
@@ -99,7 +99,7 @@ verificada contra diferencias finitas (error ~1e-8).
 - **Deferred correction**: iterar upwind (estable) con una corrección centrada explícita para acercarse a 2.º orden manteniendo estabilidad.
 - **Refinar la malla** para bajar \(\mathrm{Re}_{\text{celda}}\) y reducir la difusión numérica.
 
-| | `main` (centrado) | `upwind-no-centradas` |
+| | anteriores versiones (centrado) | `upwind-no-centradas` |
 |---|---|---|
 | Orden de precisión (convección) | 2.º \(O(h^2)\) | 1.er \(O(h)\) |
 | Estabilidad | solo si \(\mathrm{Re}_{\text{celda}}<2\) | incondicional |
